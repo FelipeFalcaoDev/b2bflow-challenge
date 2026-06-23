@@ -1,38 +1,109 @@
-```mermaid
+# b2bflow WhatsApp Message Sender
 
-flowchart TD
-    subgraph title[" "]
-        direction TB
+Python script that reads contacts from Supabase and sends personalized WhatsApp messages via Z-API.
 
-        main[" main.py\nRun the program"]
+## Setup
 
-        main --> config
-        main --> supabase_client
-        main --> whatsapp_sender
+### 1. Database Table
 
-        config["⚙️ config.py\nLoads .env variables"]
-        supabase_client["🗄️ supabase_client.py\nReads contacts from DB"]
-        whatsapp_sender["💬 whatsapp_sender.py\nSends via Z-API"]
+Create the `contacts` table in your Supabase project using the SQL Editor:
 
-        supabase_client --> supabase[(" Supabase\nContacts Database")]
-        whatsapp_sender --> zapi[" Z-API\nWhatsApp Messaging"]
-        config --> env[" .env\nCredentials & URLs"]
-    end
-
-    classDef orchestrator fill:#6c5ce7,stroke:#a29bfe,stroke-width:2px,color:#fff,font-weight:bold
-    classDef module fill:#00b894,stroke:#55efc4,stroke-width:2px,color:#fff,font-weight:bold
-    classDef external fill:#e17055,stroke:#fab1a0,stroke-width:2px,color:#fff,font-weight:bold
-
-    class main orchestrator
-    class config,supabase_client,whatsapp_sender module
-    class env,supabase,zapi external
-
-    style title fill:transparent,stroke:none
+```sql
+CREATE TABLE contacts (
+  id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
-## Arquitetura
-Cada módulo tem uma única responsabilidade (princípio SRP do SOLID):
-- `config.py` não sabe nada de WhatsApp ou Supabase, só lida com variáveis de ambiente
-- `supabase_client.py` não sabe nada de envio, só busca dados
-- `whatsapp_sender.py` não sabe nada do banco, só envia mensagens
-- `main.py` não tem lógica de negócio, só orquestra os outros módulos
+Grant SELECT permission to the anonymous role:
+
+```sql
+GRANT SELECT ON public.contacts TO anon;
+```
+
+### 2. Insert Sample Contacts
+
+Add contacts to the table (use international phone format):
+
+```sql
+INSERT INTO contacts (name, phone) VALUES
+  ('João Silva', '5585988776655'),
+  ('Maria Santos', '5585987654321'),
+  ('Pedro Costa', '5585986543210');
+```
+
+## Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_API_KEY=your-anon-key-here
+SUPABASE_TABLE_NAME=contacts
+
+# Z-API Configuration
+ZAPI_URL=https://api.z-api.io/instances/YOUR_INSTANCE_ID/token/YOUR_TOKEN/send-text
+```
+
+**Get these values from:**
+- **Supabase:** Settings → API → Project URL and anon key
+- **Z-API:** Your instance settings in the dashboard
+
+## How to Run
+
+1. **Clone the repository:**
+
+```bash
+git clone https://github.com/FelipeFalcaoDev/b2bflow-challenge.git
+cd b2bflow-challenge
+```
+
+2. **Install dependencies:**
+
+```bash
+pip install -r requirements.txt
+```
+
+3. **Configure environment variables:**
+
+Copy `.env.example` to `.env` and fill in your credentials.
+
+4. **Run the script:**
+
+```bash
+python main.py
+```
+
+### Expected Output
+
+```
+2026-06-23 16:38:54,853 - INFO - Starting b2bflow WhatsApp Message Sender
+2026-06-23 16:38:54,854 - INFO - ✓ Configuration loaded successfully
+2026-06-23 16:38:55,038 - INFO - ✓ Found 3 contact(s)
+2026-06-23 16:38:55,834 - INFO - ✓ Z-API client initialized
+2026-06-23 16:38:56,017 - INFO - ✓ Sending completed: 3 sent, 0 failed
+```
+
+## Project Structure
+
+```
+b2bflow-challenge/
+├── src/
+│   ├── config.py
+│   ├── supabase_client.py
+│   └── whatsapp_sender.py
+├── .env.example
+├── .gitignore
+├── main.py
+├── README.md
+└── requirements.txt
+```
+
+## Notes
+
+- Messages are limited to 3 contacts per run (default) to comply with Z-API free tier quotas
+- Phone numbers must be in international format (e.g., country code + area code + number)
+- Each contact must have both `name` and `phone` fields or will be skipped
