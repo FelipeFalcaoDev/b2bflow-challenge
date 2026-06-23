@@ -11,7 +11,6 @@ class WhatsAppSender:
         self.token: str = config.zapi_token
         self.headers: dict = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.token}",
         }
         logger.info("✓ Z-API client initialized")
 
@@ -23,7 +22,7 @@ class WhatsAppSender:
                 "message": message,
             }
             response = requests.post(
-                f"{self.url}/send-message",
+                self.url,
                 json=payload,
                 headers=self.headers,
                 timeout=10,
